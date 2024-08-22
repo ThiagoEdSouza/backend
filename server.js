@@ -68,6 +68,22 @@ app.get('/api/produtos', async (req, res) => {
   }
 });
 
+// Buscar um produto específico
+app.get('/api/produtos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const produto = await Product.findByPk(id);
+    if (produto) {
+      res.json(produto);
+    } else {
+      res.status(404).json({ message: 'Produto não encontrado' });
+    }
+  } catch (error) {
+    console.error('Erro ao buscar produto:', error);
+    res.status(500).json({ message: 'Erro ao buscar produto', error: error.message });
+  }
+});
+
 // Criar um novo produto
 app.post('/api/produtos', async (req, res) => {
   try {
@@ -85,10 +101,19 @@ app.post('/api/produtos', async (req, res) => {
 app.put('/api/produtos/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const [updated] = await Product.update(req.body, { where: { id } });
+    const { imagens, ...otherData } = req.body;
+    
+    const [updated] = await Product.update(otherData, { where: { id } });
     if (updated) {
-      const produto = await Product.findByPk(id);
-      res.json(produto);
+      const updatedProduct = await Product.findByPk(id);
+      
+      // Atualizar as imagens
+      if (imagens !== undefined) {
+        updatedProduct.imagens = imagens;
+        await updatedProduct.save();
+      }
+      
+      res.json(updatedProduct);
     } else {
       res.status(404).json({ message: 'Produto não encontrado' });
     }
@@ -126,7 +151,8 @@ app.post('/api/produtos/:id/imagens', upload.array('imagens', 6), async (req, re
     }
 
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ message: 'Nenhuma imagem foi enviada' });
+      // Se nenhuma imagem foi enviada, apenas retorne as imagens atuais
+      return res.json({ imagens: product.imagens || [] });
     }
 
     const imagePromises = req.files.map(processImage);
