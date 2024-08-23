@@ -109,6 +109,17 @@ app.put('/api/produtos/:id', async (req, res) => {
       
       // Atualizar as imagens
       if (imagens !== undefined) {
+        // Remover imagens antigas que não estão mais presentes
+        const oldImages = updatedProduct.imagens || [];
+        oldImages.forEach(oldImage => {
+          if (!imagens.includes(oldImage)) {
+            const imagePath = `./public/uploads/${oldImage}`;
+            if (fs.existsSync(imagePath)) {
+              fs.unlinkSync(imagePath);
+            }
+          }
+        });
+
         updatedProduct.imagens = imagens;
         await updatedProduct.save();
       }
